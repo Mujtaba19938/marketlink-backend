@@ -7,6 +7,12 @@ const connectDB = async () => {
     return;
   }
 
+  if (process.env.VERCEL && !process.env.MONGODB_URI) {
+    throw new Error(
+      "Missing MONGODB_URI in Vercel. Please set MONGODB_URI (e.g. MongoDB Atlas cluster URL) in Vercel Project Settings -> Environment Variables and redeploy."
+    );
+  }
+
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/AptechDB2';
   try {
     const db = await mongoose.connect(uri, {
