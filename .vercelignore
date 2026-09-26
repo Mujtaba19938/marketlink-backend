@@ -1,0 +1,5 @@
+node_modules
+logs
+.git
+.env.local
+test_suite.js

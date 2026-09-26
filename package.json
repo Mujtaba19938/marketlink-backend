@@ -1,0 +1,23 @@
+{
+  "name": "marketlink-express-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "node seed.js",
+    "test": "node test_suite.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "body-parser": "^2.2.1",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.8.0",
+    "morgan": "^1.2.2",
+    "multer": "^2.1.1",
+    "stripe": "^20.4.1"
+  }
+}
