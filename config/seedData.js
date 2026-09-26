@@ -10,11 +10,185 @@ import stallLocationModel from '../model/stallLocation.model.js';
 import reviewModel from '../model/review.model.js';
 import hashPassword from '../utilities/hashpassword.js';
 
+export const markets = [
+  {
+    marketId: 'mkt-1',
+    name: 'DHA & Clifton Fresh Pavilion',
+    address: 'Khayaban-e-Shahbaz, Phase 6, DHA, Karachi',
+    operatingDays: ['Wednesday', 'Saturday', 'Sunday'],
+    timings: '07:30 AM - 02:00 PM',
+    lat: 24.8015,
+    lng: 67.0682,
+    activeVendorsCount: 38,
+    status: 'open',
+  },
+  {
+    marketId: 'mkt-2',
+    name: 'Empress Market Heritage Bazaar',
+    address: 'Preedy Street, Saddar, Karachi',
+    operatingDays: ['Thursday', 'Sunday'],
+    timings: '08:00 AM - 01:30 PM',
+    lat: 24.8615,
+    lng: 67.0315,
+    activeVendorsCount: 26,
+    status: 'open',
+  },
+  {
+    marketId: 'mkt-3',
+    name: 'Gulshan-e-Iqbal Fresh Hub',
+    address: 'University Road, Hassan Square, Karachi',
+    operatingDays: ['Tuesday', 'Friday'],
+    timings: '09:00 AM - 03:00 PM',
+    lat: 24.9180,
+    lng: 67.0971,
+    activeVendorsCount: 22,
+    status: 'open',
+  },
+  {
+    marketId: 'mkt-4',
+    name: 'Hydri Super Market',
+    address: 'Block H, North Nazimabad, Karachi',
+    operatingDays: ['Saturday', 'Sunday'],
+    timings: '07:00 AM - 01:00 PM',
+    lat: 24.9392,
+    lng: 67.0425,
+    activeVendorsCount: 19,
+    status: 'open',
+  },
+  {
+    marketId: 'mkt-5',
+    name: 'Malir Organic Farm Hub',
+    address: 'Main Super Highway, Malir Cantonment, Karachi',
+    operatingDays: ['Sunday'],
+    timings: '08:30 AM - 02:30 PM',
+    lat: 24.9056,
+    lng: 67.1950,
+    activeVendorsCount: 15,
+    status: 'seasonal',
+  },
+];
+
+export const mapStalls = [
+  {
+    stallId: 'stl-101',
+    stallNumber: 'Stall #14',
+    stallName: 'Green Valley Organic Stall',
+    farmerName: 'Marcus Vance',
+    marketId: 'mkt-1',
+    marketName: 'DHA & Clifton Fresh Pavilion',
+    category: 'Veggies & Leafy Greens',
+    lat: 24.8025,
+    lng: 67.0690,
+    rating: 4.9,
+    ordersCount: 642,
+    phone: '(021) 3584-8901',
+    description: 'North Pavilion Lane, Booth 14. Certified organic greens, local farm carrots, and cabbage harvested fresh at 5:00 AM from Malir farms.',
+    specialtyItems: ['Sindh Organic Carrots', 'Crisp Cabbage', 'Fresh Palak (Spinach)', 'Fresh Broccoli'],
+    pickupWindows: ['08:00 AM - 09:30 AM', '09:30 AM - 11:00 AM', '11:00 AM - 12:30 PM'],
+  },
+  {
+    stallId: 'stl-102',
+    stallNumber: 'Stall #04',
+    stallName: 'Pacific Berry & Orchard',
+    farmerName: 'Elena Rostova',
+    marketId: 'mkt-1',
+    marketName: 'DHA & Clifton Fresh Pavilion',
+    category: 'Fruits & Berries',
+    lat: 24.8010,
+    lng: 67.0672,
+    rating: 4.8,
+    ordersCount: 380,
+    phone: '(021) 3584-7890',
+    description: 'North Pavilion Lane, Booth 04. Farm-fresh strawberries, sweet blueberries, and stone fruit.',
+    specialtyItems: ['Coastal Strawberries', 'Sweet Blueberries', 'Sindhri Mangoes'],
+    pickupWindows: ['08:30 AM - 10:00 AM', '10:00 AM - 12:00 PM'],
+  },
+  {
+    stallId: 'stl-201',
+    stallNumber: 'Stall #08',
+    stallName: 'Sunstone Orchard & Apiary',
+    farmerName: 'Silvia Morales',
+    marketId: 'mkt-2',
+    marketName: 'Empress Market Heritage Bazaar',
+    category: 'Fruits & Honey',
+    lat: 24.8620,
+    lng: 67.0320,
+    rating: 4.8,
+    ordersCount: 420,
+    phone: '(021) 3272-9012',
+    description: 'Central Hall, Stall 08. Mirpurkhas mangoes, sweet Kinnow, fresh pomegranates, and organic raw honey.',
+    specialtyItems: ['Sweet Kinnow', 'Anar (Pomegranate)', 'Pure Wild Honey'],
+    pickupWindows: ['08:30 AM - 10:30 AM', '10:30 AM - 01:00 PM'],
+  },
+  {
+    stallId: 'stl-301',
+    stallNumber: 'Stall #03',
+    stallName: 'Heritage Root Organics',
+    farmerName: 'Dale Henderson',
+    marketId: 'mkt-3',
+    marketName: 'Gulshan-e-Iqbal Fresh Hub',
+    category: 'Root Crops & Squash',
+    lat: 24.9186,
+    lng: 67.0978,
+    rating: 4.9,
+    ordersCount: 340,
+    phone: '(021) 3498-1122',
+    description: 'University Road Gate, Stall 03. Sweet butternut squash, farm sweet potatoes, and organic beetroot.',
+    specialtyItems: ['Sweet Potatoes', 'Red Beetroots', 'Butternut Squash'],
+    pickupWindows: ['09:30 AM - 11:30 AM', '11:30 AM - 02:00 PM'],
+  },
+  {
+    stallId: 'stl-401',
+    stallNumber: 'Stall #22',
+    stallName: 'Bluebell Meadow Pastures',
+    farmerName: 'Clara & Jonah Bennett',
+    marketId: 'mkt-4',
+    marketName: 'Hydri Super Market',
+    category: 'Pasture Eggs & Dairy',
+    lat: 24.9398,
+    lng: 67.0432,
+    rating: 4.7,
+    ordersCount: 512,
+    phone: '(021) 3663-4411',
+    description: 'Block H Entrance, Stall 22. Certified desi eggs, fresh organic milk, and cultured dahi.',
+    specialtyItems: ['Desi Farm Eggs', 'Fresh Dahi', 'Organic Khoya'],
+    pickupWindows: ['07:30 AM - 09:30 AM', '09:30 AM - 12:00 PM'],
+  },
+  {
+    stallId: 'stl-501',
+    stallNumber: 'Stall #05',
+    stallName: 'Ridgefield Greenhouse Co.',
+    farmerName: 'Arthur Pendelton',
+    marketId: 'mkt-5',
+    marketName: 'Malir Organic Farm Hub',
+    category: 'Hydroponics & Tomatoes',
+    lat: 24.9062,
+    lng: 67.1958,
+    rating: 4.6,
+    ordersCount: 184,
+    phone: '(021) 3450-2234',
+    description: 'Super Highway Pavilion, Stall 05. Vine-ripened organic tomatoes and farm cucumbers directly from Malir fields.',
+    specialtyItems: ['Vine Tomatoes', 'Long Cucumbers', 'Green Bell Peppers'],
+    pickupWindows: ['08:30 AM - 11:00 AM', '11:00 AM - 01:30 PM'],
+  },
+];
+
 export const seedDatabase = async () => {
   try {
+    // Check if markets need migration to Karachi coordinates
+    const karachiMarkets = await marketModel.countDocuments({ lat: { $gt: 24, $lt: 26 } });
+    if (karachiMarkets === 0) {
+      console.log("Migrating database markets & stalls to Karachi, Pakistan...");
+      await marketModel.deleteMany({});
+      await marketModel.insertMany(markets);
+      await stallLocationModel.deleteMany({});
+      await stallLocationModel.insertMany(mapStalls);
+      console.log("Karachi markets and stalls synchronized successfully.");
+    }
+
     const existingProducts = await productModel.countDocuments();
     if (existingProducts > 0) {
-      console.log(`Database already seeded (${existingProducts} products found). Skipping duplicate seed.`);
+      console.log(`Database already seeded (${existingProducts} products found). Skipping duplicate product seed.`);
       return;
     }
 
@@ -157,53 +331,6 @@ export const seedDatabase = async () => {
     await farmerModel.insertMany(farmers);
 
     // 3. Seed Markets
-    const markets = [
-      {
-        marketId: 'mkt-1',
-        name: 'Downtown Fresh Pavilion',
-        address: '400 Civic Center Plaza, Metro City',
-        operatingDays: ['Wednesday', 'Saturday', 'Sunday'],
-        timings: '07:30 AM - 02:00 PM',
-        lat: 37.7749,
-        lng: -122.4194,
-        activeVendorsCount: 38,
-        status: 'open',
-      },
-      {
-        marketId: 'mkt-2',
-        name: 'Sunset Farmers Bazaar',
-        address: '1850 Ocean Boulevard, Sunset District',
-        operatingDays: ['Thursday', 'Sunday'],
-        timings: '08:00 AM - 01:30 PM',
-        lat: 37.7599,
-        lng: -122.495,
-        activeVendorsCount: 26,
-        status: 'open',
-      },
-      {
-        marketId: 'mkt-3',
-        name: 'Oakwood Organic Pavilion',
-        address: '520 Grand Avenue, Oakwood Hills',
-        operatingDays: ['Tuesday', 'Friday'],
-        timings: '09:00 AM - 03:00 PM',
-        lat: 37.8044,
-        lng: -122.2712,
-        activeVendorsCount: 22,
-        status: 'open',
-      },
-      {
-        marketId: 'mkt-4',
-        name: 'Harbor Fresh Wharf Market',
-        address: 'Pier 39 Marina Esplanade',
-        operatingDays: ['Saturday', 'Sunday'],
-        timings: '07:00 AM - 01:00 PM',
-        lat: 37.8087,
-        lng: -122.4098,
-        activeVendorsCount: 19,
-        status: 'open',
-      },
-    ];
-
     await marketModel.insertMany(markets);
 
     // 4. Seed Master Categories
@@ -599,43 +726,6 @@ export const seedDatabase = async () => {
     await announcementModel.insertMany(announcements);
 
     // 9. Seed Interactive Map Stalls
-    const mapStalls = [
-      {
-        stallId: 'stl-101',
-        stallNumber: 'Stall #14',
-        stallName: 'Green Valley Organic Stall',
-        farmerName: 'Marcus Vance',
-        marketId: 'mkt-1',
-        marketName: 'Downtown Fresh Pavilion',
-        category: 'Veggies & Leafy Greens',
-        lat: 37.7754,
-        lng: -122.4198,
-        rating: 4.9,
-        ordersCount: 642,
-        phone: '(555) 234-8901',
-        description: 'North Shed A, Booth 14. Certified organic greens, heirloom carrots, and cabbage harvested fresh at 5:00 AM.',
-        specialtyItems: ['Heirloom Carrots', 'Crisp Cabbage', 'Tuscan Kale', 'Fresh Broccoli'],
-        pickupWindows: ['08:00 AM - 09:30 AM', '09:30 AM - 11:00 AM', '11:00 AM - 12:30 PM'],
-      },
-      {
-        stallId: 'stl-102',
-        stallNumber: 'Stall #08',
-        stallName: 'Sunstone Orchard & Apiary',
-        farmerName: 'Silvia Morales',
-        marketId: 'mkt-2',
-        marketName: 'Sunset Farmers Bazaar',
-        category: 'Fruits & Honey',
-        lat: 37.7599,
-        lng: -122.495,
-        rating: 4.8,
-        ordersCount: 420,
-        phone: '(555) 782-9012',
-        description: 'West Aisle, Booth 08. Wildflower honey, seasonal stone fruit, and fresh pressed cider.',
-        specialtyItems: ['Wildflower Honey', 'Honeycrisp Apples', 'Heirloom Tomatoes'],
-        pickupWindows: ['08:30 AM - 10:00 AM', '10:00 AM - 12:00 PM'],
-      },
-    ];
-
     await stallLocationModel.insertMany(mapStalls);
 
     console.log("Seeding complete: AptechDB2 populated with full dataset.");

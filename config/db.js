@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import dns from "dns";
 
 try {
+  process.loadEnvFile();
+} catch (e) {}
+
+try {
   dns.setServers(["8.8.8.8", "1.1.1.1"]);
 } catch (e) {
   // Ignore in environments where setting DNS servers is restricted
