@@ -167,13 +167,18 @@ const addOrder = async (req, res) => {
 
     if (!isPickupCash && stripe) {
       try {
-        const clientOrigin = process.env.CLIENT_URL || process.env.CLIENT_URL_ALT || "http://localhost:3000";
+        const clientOrigin =
+          req.body.clientOrigin ||
+          req.headers.origin ||
+          process.env.CLIENT_URL ||
+          process.env.CLIENT_URL_ALT ||
+          "https://marketlink-two.vercel.app";
 
         const lineItems = validatedItems.map((item) => ({
           price_data: {
             currency: "usd",
             product_data: {
-              name: item.name || "Product",
+              name: item.name || "Produce Item",
             },
             unit_amount: Math.round(item.price * 100),
           },
@@ -197,8 +202,8 @@ const addOrder = async (req, res) => {
           payment_method_types: ["card"],
           line_items: lineItems,
           mode: "payment",
-          success_url: `${clientOrigin}/order-success/${newOrder._id}?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${clientOrigin}/myaccount`,
+          success_url: `${clientOrigin}/#/dashboard?payment_success=true&order_id=${newOrder._id}&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${clientOrigin}/#/dashboard?payment_cancelled=true`,
           metadata: {
             orderId: newOrder._id.toString(),
             orderNumber: newOrder.orderNumber,
