@@ -1,6 +1,5 @@
 import express from 'express'
-import fs from 'fs'
-import path from 'path'
+import { sendImage } from '../utilities/imageStore.js'
 import { getAllMarket, getMarketbyID } from '../controller/marketController.js'
 import { getAllCategory } from '../controller/categoryController.js'
 import { getAllFarmer, getFarmerDirectory, getFarmerbyID } from '../controller/farmerController.js'
@@ -33,11 +32,7 @@ router.get('/getPickupSlots/:farmerMarketId', getAvailableSlots)
 router.get('/getAnnouncements', getActiveAnnouncements)
 router.post('/contact', submitContact)
 
-router.get('/images/:imageName', (req, res) => {
-    const imageName = path.basename(req.params.imageName)
-    const filePath = path.resolve('uploads', imageName)
-    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, msg: 'Image not found' })
-    res.sendFile(filePath)
-})
+// photos are stored in MongoDB GridFS (see utilities/imageStore.js)
+router.get('/images/:imageName', (req, res) => sendImage(req.params.imageName, res))
 
 export default router

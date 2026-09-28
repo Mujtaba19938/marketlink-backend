@@ -1,8 +1,5 @@
 import multer from 'multer'
 import path from 'path'
-import fs from 'fs'
-
-fs.mkdirSync('uploads', { recursive: true })
 
 const allowed = {
     'image/jpeg': ['.jpg', '.jpeg'],
@@ -10,13 +7,9 @@ const allowed = {
     'image/webp': ['.webp'],
 }
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase()
-        cb(null, Date.now() + '-' + Math.round(Math.random() * 1e9) + ext)
-    },
-})
+// files are kept in memory and then saved to MongoDB GridFS (utilities/imageStore.js),
+// because serverless hosts like Vercel cannot write to the local disk
+const storage = multer.memoryStorage()
 
 // checks MIME type AND extension
 const fileFilter = (req, file, cb) => {

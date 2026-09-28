@@ -7,7 +7,7 @@ import orderItemModel from '../model/orderItem.model.js'
 import reviewModel from '../model/review.model.js'
 import farmerMarketModel from '../model/farmerMarket.model.js'
 import pick from '../utilities/pick.js'
-import removeFile from '../utilities/removefile.js'
+import { saveImage, deleteImage } from '../utilities/imageStore.js'
 
 // public: never show user id, email, phone or admin notes
 const publicFields = '-user -statusReason'
@@ -120,7 +120,6 @@ const updateFarmerProfile = async (req, res) => {
     // approvalStatus is NOT in this list, so a farmer cannot approve himself
     const updates = pick(req.body, ['stallName', 'description', 'address', 'city', 'latitude', 'longitude', 'autoResetWeeklyStock'])
     if (updates.stallName !== undefined && (typeof updates.stallName !== 'string' || !updates.stallName.trim())) {
-        if (req.file) removeFile(req.file.filename)
         return res.status(400).json({ success: false, msg: 'Stall name cannot be empty' })
     }
     if (updates.autoResetWeeklyStock !== undefined) {
@@ -129,13 +128,20 @@ const updateFarmerProfile = async (req, res) => {
     Object.assign(farmer, updates)
 
     let oldImage = null
+    let newImage = null
     if (req.file) {
+        newImage = await saveImage(req.file) // photo goes to MongoDB GridFS
         oldImage = farmer.image
-        farmer.image = req.file.filename
+        farmer.image = newImage
     }
 
-    await farmer.save()
-    removeFile(oldImage)
+    try {
+        await farmer.save()
+    } catch (err) {
+        await deleteImage(newImage)
+        throw err
+    }
+    await deleteImage(oldImage)
 
     // contact person + phone live on the user account
     const userUpdates = {}

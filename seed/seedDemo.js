@@ -13,8 +13,8 @@ import orderModel from '../model/order.model.js'
 import orderItemModel from '../model/orderItem.model.js'
 import reviewModel from '../model/review.model.js'
 import hashPassword from '../utilities/hashpassword.js'
-import fs from 'fs'
 import path from 'path'
+import { saveImageFromDisk } from '../utilities/imageStore.js'
 
 // Run once (or as many times as you want, it's idempotent):
 //   npm run seeddemodata
@@ -229,17 +229,11 @@ const productDefs = [
     { stallName: 'Sabzi Ghar', category: 'Vegetables', name: 'Eggplant (Baingan)', description: 'Glossy purple eggplants, ideal for bharta', price: 100, unit: 'kg', quantity: 40, weeklyStock: 40, imageType: 'broccoli', photo: 'eggplant.jpg', availability: 'AVAILABLE' },
 ]
 
-// product photos live in seed/images and are copied into uploads/ (served by GET /api/images/:name)
-fs.mkdirSync('uploads', { recursive: true })
-const seedPhoto = (file) => {
-    const target = 'seed-' + file
-    const dest = path.resolve('uploads', target)
-    if (!fs.existsSync(dest)) fs.copyFileSync(path.resolve('seed', 'images', file), dest)
-    return target
-}
+// product photos live in seed/images and are uploaded into MongoDB GridFS (served by GET /api/images/:name)
+const seedPhoto = (file) => saveImageFromDisk(path.resolve('seed', 'images', file), 'seed-' + file)
 
 for (const p of productDefs) {
-    const image = seedPhoto(p.photo)
+    const image = await seedPhoto(p.photo)
     const exists = await productModel.findOne({ farmer: farmers[p.stallName]._id, name: p.name })
     if (!exists) {
         await productModel.create({

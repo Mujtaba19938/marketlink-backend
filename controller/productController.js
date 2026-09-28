@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import productModel from '../model/product.model.js'
 import categoryModel from '../model/category.model.js'
 import farmerModel from '../model/farmer.model.js'
-import removeFile from '../utilities/removefile.js'
+import { saveImage, deleteImage } from '../utilities/imageStore.js'
 import { notifyRestock } from '../utilities/stock.js'
 
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -12,11 +12,8 @@ const toNumber = (v) => (v === '' || v === null ? NaN : Number(v))
 
 const IMAGE_TYPES = ['cabbage', 'kale', 'broccoli', 'celery', 'carrot', 'tomato', 'pepper', 'mushroom']
 
-// returns 400 and deletes the image that multer already saved
-const badRequest = (req, res, msg) => {
-    if (req.file) removeFile(req.file.filename)
-    return res.status(400).json({ success: false, msg })
-}
+// uploads are held in memory until saved, so a rejected request leaves nothing behind
+const badRequest = (req, res, msg) => res.status(400).json({ success: false, msg })
 
 // ================= PUBLIC =================
 
@@ -141,6 +138,8 @@ const addproduct = async (req, res) => {
     let avail = ['AVAILABLE', 'SOLD_OUT', 'UNAVAILABLE'].includes(availability) ? availability : 'AVAILABLE'
     if (qty === 0 && avail === 'AVAILABLE') avail = 'SOLD_OUT'
 
+    const image = await saveImage(req.file) // photo goes to MongoDB GridFS
+
     // farmer id comes from the logged-in user, never from the body
     const product = await productModel.create({
         farmer: req.farmer._id,
@@ -153,7 +152,10 @@ const addproduct = async (req, res) => {
         weeklyStock: weeklyStock !== undefined && weeklyStock !== '' ? toNumber(weeklyStock) : 0,
         imageType: IMAGE_TYPES.includes(imageType) ? imageType : 'cabbage',
         availability: avail,
-        image: req.file ? req.file.filename : null,
+        image,
+    }).catch(async (err) => {
+        await deleteImage(image) // product not saved -> drop its photo
+        throw err
     })
 
     await product.populate('category', 'name')
@@ -168,10 +170,7 @@ const updateproduct = async (req, res) => {
 
     // ownership check: product must belong to THIS farmer
     const product = await productModel.findOne({ _id: productId, farmer: req.farmer._id, isActive: true })
-    if (!product) {
-        if (req.file) removeFile(req.file.filename)
-        return res.status(404).json({ success: false, msg: 'Product not found' })
-    }
+    if (!product) return res.status(404).json({ success: false, msg: 'Product not found' })
 
     if (categoryId !== undefined) {
         if (!mongoose.isValidObjectId(categoryId)) return badRequest(req, res, 'Invalid categoryId')
@@ -202,13 +201,20 @@ const updateproduct = async (req, res) => {
     }
 
     let oldImage = null
+    let newImage = null
     if (req.file) {
+        newImage = await saveImage(req.file)
         oldImage = product.image
-        product.image = req.file.filename
+        product.image = newImage
     }
 
-    await product.save()
-    removeFile(oldImage) // delete the replaced image only after save succeeded
+    try {
+        await product.save()
+    } catch (err) {
+        await deleteImage(newImage)
+        throw err
+    }
+    await deleteImage(oldImage) // delete the replaced photo only after save succeeded
 
     if (wasOutOfStock && product.availability === 'AVAILABLE' && product.quantity > 0) await notifyRestock(product)
 
