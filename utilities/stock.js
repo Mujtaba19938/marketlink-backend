@@ -50,7 +50,7 @@ const takeStock = async (productId, qty) => {
     const updated = await productModel.findOneAndUpdate(
         { _id: productId, isActive: true, isBlocked: false, availability: 'AVAILABLE', quantity: { $gte: qty } },
         { $inc: { quantity: -qty } },
-        { new: true }
+        { returnDocument: 'after' }
     )
     if (updated && updated.quantity === 0) await syncAvailability(updated._id)
     return updated

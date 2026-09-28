@@ -227,14 +227,14 @@ const removeModeration = async (req, res) => {
     }
 
     if (type === 'product') {
-        const product = await productModel.findByIdAndUpdate(id, { $set: { isBlocked: true, moderated: true } }, { new: true })
+        const product = await productModel.findByIdAndUpdate(id, { $set: { isBlocked: true, moderated: true } }, { returnDocument: 'after' })
             .populate('farmer', 'user')
         if (!product) return res.status(404).json({ success: false, msg: 'Product not found' })
         if (product.farmer) await notify(product.farmer.user, 'Listing removed', '"' + product.name + '" was removed by an admin for violating platform guidelines.', 'SYSTEM')
         return res.status(200).json({ success: true, msg: 'Listing removed' })
     }
 
-    const review = await reviewModel.findByIdAndUpdate(id, { $set: { status: 'HIDDEN', moderated: true } }, { new: true })
+    const review = await reviewModel.findByIdAndUpdate(id, { $set: { status: 'HIDDEN', moderated: true } }, { returnDocument: 'after' })
     if (!review) return res.status(404).json({ success: false, msg: 'Review not found' })
     res.status(200).json({ success: true, msg: 'Review hidden' })
 }

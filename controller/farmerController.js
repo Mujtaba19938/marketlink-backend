@@ -143,7 +143,7 @@ const updateFarmerProfile = async (req, res) => {
     if (typeof req.body.phone === 'string') userUpdates.phone = req.body.phone.trim()
     let user = req.user
     if (Object.keys(userUpdates).length) {
-        user = await userModel.findByIdAndUpdate(req.user._id, { $set: userUpdates }, { new: true, runValidators: true }).select('-pwd')
+        user = await userModel.findByIdAndUpdate(req.user._id, { $set: userUpdates }, { returnDocument: 'after', runValidators: true }).select('-pwd')
     }
 
     res.status(200).json({ success: true, msg: 'Your Profile has been updated', farmer, user })

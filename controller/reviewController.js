@@ -76,7 +76,7 @@ const moderateReview = async (req, res) => {
         return res.status(400).json({ success: false, msg: 'Valid reviewId and status (VISIBLE/HIDDEN) are required' })
     }
 
-    const review = await reviewModel.findByIdAndUpdate(reviewId, { $set: { status, moderated: true } }, { new: true })
+    const review = await reviewModel.findByIdAndUpdate(reviewId, { $set: { status, moderated: true } }, { returnDocument: 'after' })
     if (!review) return res.status(404).json({ success: false, msg: 'Review not found' })
 
     res.status(200).json({ success: true, msg: 'Review is now ' + status, review })

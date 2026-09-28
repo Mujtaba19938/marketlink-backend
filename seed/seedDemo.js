@@ -40,7 +40,7 @@ const categories = {}
 for (const name of categoryNames) {
     categories[name] = await categoryModel.findOneAndUpdate(
         { name }, { $setOnInsert: { name, description: name + ' from local farmers', isActive: true } },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
     )
 }
 console.log('Categories ready:', Object.keys(categories).join(', '))
@@ -57,12 +57,52 @@ const marketDefs = [
         address: 'Block 2, Clifton', city: 'Karachi',
         latitude: 24.8138, longitude: 67.0300, operatingDays: ['SAT', 'SUN'], timings: '07:30 - 13:00',
     },
+    {
+        name: 'DHA Phase 6 Sunday Bazaar', description: 'Weekly organic and fresh produce bazaar in DHA',
+        address: 'Khayaban-e-Bukhari, DHA Phase 6', city: 'Karachi',
+        latitude: 24.7968, longitude: 67.0655, operatingDays: ['SUN'], timings: '07:00 - 13:00',
+    },
+    {
+        name: 'Gulshan-e-Iqbal Weekly Bazaar', description: 'Large weekly vegetable and fruit bazaar near Maskan Chowrangi',
+        address: 'Block 13-D, Gulshan-e-Iqbal', city: 'Karachi',
+        latitude: 24.9183, longitude: 67.0971, operatingDays: ['TUE', 'SAT'], timings: '08:00 - 20:00',
+    },
+    {
+        name: 'North Nazimabad Friday Bazaar', description: 'Friday bazaar near Hyderi Market',
+        address: 'Block H, North Nazimabad', city: 'Karachi',
+        latitude: 24.9357, longitude: 67.0402, operatingDays: ['FRI'], timings: '09:00 - 21:00',
+    },
+    {
+        name: 'PECHS Tariq Road Market', description: 'Neighbourhood fresh market off Tariq Road',
+        address: 'Block 2, PECHS', city: 'Karachi',
+        latitude: 24.8722, longitude: 67.0614, operatingDays: ['THU', 'SUN'], timings: '08:00 - 18:00',
+    },
+    {
+        name: 'Federal B Area Monday Bazaar', description: 'Monday bazaar near Ayesha Manzil',
+        address: 'Block 7, Federal B Area', city: 'Karachi',
+        latitude: 24.9268, longitude: 67.0652, operatingDays: ['MON'], timings: '10:00 - 22:00',
+    },
+    {
+        name: 'Gulistan-e-Jauhar Weekly Market', description: 'Mid-week produce market for Jauhar and nearby blocks',
+        address: 'Block 7, Gulistan-e-Jauhar', city: 'Karachi',
+        latitude: 24.9121, longitude: 67.1327, operatingDays: ['WED'], timings: '09:00 - 21:00',
+    },
+    {
+        name: 'Malir Cantt Bachat Bazaar', description: 'Farm-gate prices from growers in Malir',
+        address: 'Malir Cantonment', city: 'Karachi',
+        latitude: 24.9415, longitude: 67.2031, operatingDays: ['WED', 'SAT'], timings: '07:00 - 14:00',
+    },
+    {
+        name: 'Korangi Sunday Bazaar', description: 'Sunday bazaar serving Korangi and Landhi',
+        address: 'Sector 5, Korangi', city: 'Karachi',
+        latitude: 24.8305, longitude: 67.1352, operatingDays: ['SUN'], timings: '08:00 - 16:00',
+    },
 ]
 const markets = {}
 for (const m of marketDefs) {
     markets[m.name] = await marketModel.findOneAndUpdate(
         { name: m.name }, { $setOnInsert: { ...m, isActive: true } },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
     )
 }
 console.log('Markets ready:', Object.keys(markets).join(', '))
@@ -120,6 +160,14 @@ const assignmentDefs = [
     { stallName: 'Ali Farm', marketName: 'Saddar Sunday Market', operatingDays: ['FRI', 'SAT'], pickupStart: '10:00', pickupEnd: '13:00', cutoffHours: 2, stallNumber: 'Stall #14', latitude: 24.8611, longitude: 67.0101 },
     { stallName: 'Ali Farm', marketName: 'Clifton Farmers Market', operatingDays: ['SAT'], pickupStart: '09:00', pickupEnd: '12:00', cutoffHours: 3, stallNumber: 'Stall #3', latitude: 24.8141, longitude: 67.0296 },
     { stallName: 'Sabzi Ghar', marketName: 'Saddar Sunday Market', operatingDays: ['SAT', 'SUN'], pickupStart: '11:00', pickupEnd: '14:00', cutoffHours: 4, stallNumber: 'Stall #22', latitude: 24.8605, longitude: 67.0109 },
+    { stallName: 'Ali Farm', marketName: 'DHA Phase 6 Sunday Bazaar', operatingDays: ['SUN'], pickupStart: '08:00', pickupEnd: '12:00', cutoffHours: 12, stallNumber: 'Stall #7', latitude: 24.7971, longitude: 67.0651 },
+    { stallName: 'Ali Farm', marketName: 'Gulshan-e-Iqbal Weekly Bazaar', operatingDays: ['TUE'], pickupStart: '16:00', pickupEnd: '19:00', cutoffHours: 6, stallNumber: 'Stall #31', latitude: 24.9186, longitude: 67.0968 },
+    { stallName: 'Ali Farm', marketName: 'Malir Cantt Bachat Bazaar', operatingDays: ['WED', 'SAT'], pickupStart: '08:00', pickupEnd: '12:00', cutoffHours: 12, stallNumber: 'Stall #2', latitude: 24.9418, longitude: 67.2027 },
+    { stallName: 'Sabzi Ghar', marketName: 'North Nazimabad Friday Bazaar', operatingDays: ['FRI'], pickupStart: '17:00', pickupEnd: '20:00', cutoffHours: 6, stallNumber: 'Stall #18', latitude: 24.9360, longitude: 67.0398 },
+    { stallName: 'Sabzi Ghar', marketName: 'PECHS Tariq Road Market', operatingDays: ['THU', 'SUN'], pickupStart: '10:00', pickupEnd: '14:00', cutoffHours: 8, stallNumber: 'Stall #9', latitude: 24.8725, longitude: 67.0611 },
+    { stallName: 'Sabzi Ghar', marketName: 'Federal B Area Monday Bazaar', operatingDays: ['MON'], pickupStart: '17:00', pickupEnd: '21:00', cutoffHours: 6, stallNumber: 'Stall #12', latitude: 24.9271, longitude: 67.0649 },
+    { stallName: 'Sabzi Ghar', marketName: 'Gulistan-e-Jauhar Weekly Market', operatingDays: ['WED'], pickupStart: '16:00', pickupEnd: '20:00', cutoffHours: 6, stallNumber: 'Stall #5', latitude: 24.9124, longitude: 67.1323 },
+    { stallName: 'Sabzi Ghar', marketName: 'Korangi Sunday Bazaar', operatingDays: ['SUN'], pickupStart: '09:00', pickupEnd: '13:00', cutoffHours: 12, stallNumber: 'Stall #26', latitude: 24.8308, longitude: 67.1348 },
 ]
 
 const assignments = {}
@@ -144,6 +192,17 @@ const slotDefs = [
     { key: 'Ali Farm@Clifton Farmers Market', dayOfWeek: 'SAT', startTime: '09:00', endTime: '10:00', capacity: 5 },
     { key: 'Sabzi Ghar@Saddar Sunday Market', dayOfWeek: 'SAT', startTime: '11:00', endTime: '12:00', capacity: 6 },
     { key: 'Sabzi Ghar@Saddar Sunday Market', dayOfWeek: 'SUN', startTime: '11:00', endTime: '12:00', capacity: 6 },
+    { key: 'Ali Farm@DHA Phase 6 Sunday Bazaar', dayOfWeek: 'SUN', startTime: '08:00', endTime: '10:00', capacity: 10 },
+    { key: 'Ali Farm@DHA Phase 6 Sunday Bazaar', dayOfWeek: 'SUN', startTime: '10:00', endTime: '12:00', capacity: 10 },
+    { key: 'Ali Farm@Gulshan-e-Iqbal Weekly Bazaar', dayOfWeek: 'TUE', startTime: '16:00', endTime: '19:00', capacity: 12 },
+    { key: 'Ali Farm@Malir Cantt Bachat Bazaar', dayOfWeek: 'WED', startTime: '08:00', endTime: '12:00', capacity: 8 },
+    { key: 'Ali Farm@Malir Cantt Bachat Bazaar', dayOfWeek: 'SAT', startTime: '08:00', endTime: '12:00', capacity: 8 },
+    { key: 'Sabzi Ghar@North Nazimabad Friday Bazaar', dayOfWeek: 'FRI', startTime: '17:00', endTime: '20:00', capacity: 12 },
+    { key: 'Sabzi Ghar@PECHS Tariq Road Market', dayOfWeek: 'THU', startTime: '10:00', endTime: '14:00', capacity: 8 },
+    { key: 'Sabzi Ghar@PECHS Tariq Road Market', dayOfWeek: 'SUN', startTime: '10:00', endTime: '14:00', capacity: 8 },
+    { key: 'Sabzi Ghar@Federal B Area Monday Bazaar', dayOfWeek: 'MON', startTime: '17:00', endTime: '21:00', capacity: 10 },
+    { key: 'Sabzi Ghar@Gulistan-e-Jauhar Weekly Market', dayOfWeek: 'WED', startTime: '16:00', endTime: '20:00', capacity: 10 },
+    { key: 'Sabzi Ghar@Korangi Sunday Bazaar', dayOfWeek: 'SUN', startTime: '09:00', endTime: '13:00', capacity: 10 },
 ]
 
 for (const s of slotDefs) {

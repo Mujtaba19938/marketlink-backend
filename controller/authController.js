@@ -135,7 +135,7 @@ const updateprofile = async (req, res) => {
     const user = await userModel.findByIdAndUpdate(
         req.user._id,
         { $set: updates },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: true }
     ).select('-pwd')
 
     res.status(200).json({ success: true, msg: "Your Profile has been updated", user: user })
