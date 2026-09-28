@@ -127,7 +127,7 @@ const createOrder = async (req, res) => {
     cart.farmer = undefined
     await cart.save()
 
-    await notify(farmer.user, 'New order received', 'You have a new pre-order worth ' + order.totalAmount + ' for ' + pickupDate, 'ORDER')
+    await notify(farmer.user, 'New order received', 'You have a new pre-order worth Rs ' + order.totalAmount + ' for ' + pickupDate, 'ORDER')
     await notify(req.user._id, 'Order placed', 'Your pre-order with ' + farmer.stallName + ' was placed. Pay at pickup on ' + pickupDate + ' (' + slot.startTime + '-' + slot.endTime + ').', 'ORDER')
 
     const [full] = await withItems([await order.populate([
