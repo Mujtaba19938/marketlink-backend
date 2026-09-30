@@ -27,6 +27,46 @@ const getAllMarket = async (req, res) => {
     res.status(200).json({ success: true, markets: withCounts(markets, counts) })
 }
 
+// GET /getNearbyMarkets?lat=24.86&lng=67.00&km=25
+// Markets sorted by distance from the user's location. The distance is calculated inside MongoDB with
+// the haversine formula straight from each market's latitude/longitude fields, so coordinates edited
+// in Atlas or from the admin panel are picked up immediately (no extra geo field to keep in sync).
+const getNearbyMarkets = async (req, res) => {
+    const lat = Number(req.query.lat)
+    const lng = Number(req.query.lng)
+    const km = Math.min(Math.max(Number(req.query.km) || 25, 1), 500)
+
+    if (!(lat >= -90 && lat <= 90) || !(lng >= -180 && lng <= 180) || req.query.lat === undefined || req.query.lng === undefined) {
+        return res.status(400).json({ success: false, msg: 'Valid lat and lng query parameters are required' })
+    }
+
+    const toRad = (field) => ({ $degreesToRadians: field })
+    const [markets, counts] = await Promise.all([
+        marketModel.aggregate([
+            { $match: { isActive: true, latitude: { $type: 'number' }, longitude: { $type: 'number' } } },
+            { $addFields: {
+                distanceKm: { $multiply: [6371, { $multiply: [2, { $asin: { $sqrt: { $add: [
+                    { $pow: [{ $sin: { $divide: [{ $subtract: [toRad('$latitude'), toRad(lat)] }, 2] } }, 2] },
+                    { $multiply: [
+                        { $cos: toRad(lat) },
+                        { $cos: toRad('$latitude') },
+                        { $pow: [{ $sin: { $divide: [{ $subtract: [toRad('$longitude'), toRad(lng)] }, 2] } }, 2] },
+                    ] },
+                ] } } }] }] },
+            } },
+            { $match: { distanceKm: { $lte: km } } },
+            { $sort: { distanceKm: 1 } },
+            { $limit: 20 },
+        ]),
+        vendorCounts(),
+    ])
+
+    res.status(200).json({
+        success: true,
+        markets: markets.map((m) => ({ ...m, distanceKm: Number(m.distanceKm.toFixed(2)), activeVendorsCount: counts[String(m._id)] || 0 })),
+    })
+}
+
 const getMarketbyID = async (req, res) => {
     const id = req.params.id
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, msg: 'Invalid market id' })
@@ -78,4 +118,4 @@ const deletemarket = async (req, res) => {
     res.status(200).json({ success: true, msg: 'Market deleted' })
 }
 
-export { getAllMarket, getMarketbyID, addmarket, updatemarket, deletemarket }
+export { getAllMarket, getNearbyMarkets, getMarketbyID, addmarket, updatemarket, deletemarket }

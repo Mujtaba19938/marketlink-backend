@@ -17,6 +17,10 @@ paymentStatus:{type:String,default:'UNPAID'},
 declineReason:String,
 cancelReason:String,
 notes:String,
+// 6-digit code shown to the customer (as a QR code too). The farmer must enter / scan it to complete the pickup.
+// select:false so it never leaks into farmer order lists; customer queries opt in with .select('+pickupCode')
+pickupCode:{type:String,select:false},
+completedAt:Date, // when the farmer confirmed the handover
 },
 {
 timestamps:true
@@ -25,5 +29,6 @@ timestamps:true
 
 orderModel.index({customer:1,createdAt:-1})
 orderModel.index({farmer:1,status:1})
+orderModel.index({farmer:1,pickupCode:1})
 
 export default mongoose.model('order',orderModel)

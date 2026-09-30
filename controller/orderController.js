@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import mongoose from 'mongoose'
 import cartModel from '../model/cart.model.js'
 import productModel from '../model/product.model.js'
@@ -14,6 +15,30 @@ import { dayOfWeek, combineDateTime, subtractHours } from '../utilities/dateHelp
 
 const dateOk = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
 const ACTIVE_STATUSES = ['PLACED', 'ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED']
+
+// ---- pickup verification ----
+// every order gets a random 6-digit code. The customer shows it (or its QR code) at the stall and the
+// farmer must enter / scan it to complete the pickup, so only the person who placed the order can collect it.
+const newPickupCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0')
+// QR payload: "MLPICKUP:<orderId>:<code>". Typed codes are just the 6 digits.
+const parsePickupInput = (input) => {
+    const text = String(input || '').trim()
+    const qr = /^MLPICKUP:([a-f0-9]{24}):(\d{6})$/i.exec(text)
+    if (qr) return { orderId: qr[1], code: qr[2] }
+    const digits = text.replace(/\D/g, '')
+    return digits.length === 6 ? { code: digits } : null
+}
+
+// orders created before pickup codes existed get one the first time the customer loads them
+const ensurePickupCodes = async (orders) => {
+    for (const o of orders) {
+        if (!o.pickupCode && ['PLACED', 'ACCEPTED', 'READY_FOR_PICKUP'].includes(o.status)) {
+            o.pickupCode = newPickupCode()
+            await orderModel.updateOne({ _id: o._id }, { $set: { pickupCode: o.pickupCode } })
+        }
+    }
+    return orders
+}
 
 // attaches order items (and, for customers, which items were already reviewed) to a list of orders
 const withItems = async (orders, customerId) => {
@@ -115,6 +140,7 @@ const createOrder = async (req, res) => {
             pickupSlot: slot._id, pickupDate: new Date(pickupDate + 'T00:00:00'),
             pickupStart: slot.startTime, pickupEnd: slot.endTime, cutoffAt,
             totalAmount: Number(totalAmount.toFixed(2)),
+            pickupCode: newPickupCode(),
             notes: typeof notes === 'string' ? notes.trim().slice(0, 500) : undefined,
         })
         await orderItemModel.insertMany(orderItemsData.map((i) => ({ ...i, order: order._id })))
@@ -140,9 +166,11 @@ const createOrder = async (req, res) => {
 
 const getMyOrders = async (req, res) => {
     const orders = await orderModel.find({ customer: req.user._id })
+        .select('+pickupCode')
         .populate('farmer', 'stallName')
         .populate('market', 'name address city latitude longitude')
         .sort({ createdAt: -1 })
+    await ensurePickupCodes(orders)
     res.status(200).json({ success: true, orders: await withItems(orders, req.user._id) })
 }
 
@@ -151,9 +179,11 @@ const getOrderById = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, msg: 'Invalid order id' })
 
     const order = await orderModel.findOne({ _id: id, customer: req.user._id })
+        .select('+pickupCode')
         .populate('farmer', 'stallName')
         .populate('market', 'name address city latitude longitude')
     if (!order) return res.status(404).json({ success: false, msg: 'Order not found' })
+    await ensurePickupCodes([order])
 
     const [full] = await withItems([order], req.user._id)
     res.status(200).json({ success: true, order: full, items: full.items })
@@ -337,8 +367,16 @@ const changeOrderStatus = async (req, res, newStatus, needReason) => {
     if (!mongoose.isValidObjectId(orderId)) return res.status(400).json({ success: false, msg: 'Valid orderId is required' })
     if (needReason && (typeof reason !== 'string' || !reason.trim())) return res.status(400).json({ success: false, msg: 'Reason is required' })
 
-    const order = await orderModel.findOne({ _id: orderId, farmer: req.farmer._id })
+    const order = await orderModel.findOne({ _id: orderId, farmer: req.farmer._id }).select('+pickupCode')
     if (!order) return res.status(404).json({ success: false, msg: 'Order not found' })
+
+    // completing a pickup needs the customer's code (typed or scanned). Orders from before codes existed are exempt.
+    if (newStatus === 'COMPLETED' && order.pickupCode) {
+        const input = parsePickupInput(req.body.pickupCode)
+        if (!input || input.code !== order.pickupCode || (input.orderId && input.orderId !== String(order._id))) {
+            return res.status(400).json({ success: false, msg: 'Pickup code does not match this order. Ask the customer to show their code again.' })
+        }
+    }
 
     if (!validTransition(order.status, newStatus)) {
         return res.status(409).json({ success: false, msg: 'Cannot change order from ' + order.status + ' to ' + newStatus })
@@ -347,7 +385,10 @@ const changeOrderStatus = async (req, res, newStatus, needReason) => {
     order.status = newStatus
     if (newStatus === 'DECLINED') order.declineReason = reason.trim()
     if (newStatus === 'CANCELLED_BY_FARMER') order.cancelReason = reason.trim()
-    if (newStatus === 'COMPLETED') order.paymentStatus = 'PAID' // paid in person at pickup
+    if (newStatus === 'COMPLETED') {
+        order.paymentStatus = 'PAID' // paid in person at pickup
+        order.completedAt = new Date()
+    }
     await order.save()
 
     if (['DECLINED', 'CANCELLED_BY_FARMER'].includes(newStatus)) {
@@ -359,7 +400,7 @@ const changeOrderStatus = async (req, res, newStatus, needReason) => {
     const messages = {
         ACCEPTED: 'Order ' + code + ' was accepted by ' + req.farmer.stallName + '.',
         DECLINED: 'Order ' + code + ' was declined: ' + (reason || '').trim(),
-        READY_FOR_PICKUP: 'Order ' + code + ' is packed and ready for pickup at ' + req.farmer.stallName + '.',
+        READY_FOR_PICKUP: 'Order ' + code + ' is packed and ready for pickup at ' + req.farmer.stallName + '. Show your pickup QR code (Active Pre-Orders) at the stall.',
         COMPLETED: 'Order ' + code + ' was picked up. Thank you! You can now rate your items.',
         CANCELLED_BY_FARMER: 'Order ' + code + ' was cancelled by the farmer: ' + (reason || '').trim(),
     }
@@ -370,6 +411,28 @@ const changeOrderStatus = async (req, res, newStatus, needReason) => {
     res.status(200).json({ success: true, msg: 'Order is now ' + newStatus, order: full })
 }
 
+// POST /farmer/orders/verifypickup { code } -> code is the scanned QR text or the 6 digits the customer reads out.
+// Finds the matching order at this farmer's stall so it can be handed over; it does NOT complete it.
+const verifyPickup = async (req, res) => {
+    const input = parsePickupInput(req.body.code)
+    if (!input) return res.status(400).json({ success: false, msg: 'Enter the 6-digit pickup code or scan the QR code' })
+
+    const filter = { farmer: req.farmer._id, pickupCode: input.code, status: { $in: ['ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED'] } }
+    if (input.orderId) filter._id = input.orderId
+
+    const orders = await orderModel.find(filter).populate('customer', 'name phone').populate('market', 'name').sort({ pickupDate: 1 })
+    if (orders.length === 0) return res.status(404).json({ success: false, msg: 'No order at your stall matches this code' })
+
+    const order = orders.find((o) => o.status === 'READY_FOR_PICKUP') || orders.find((o) => o.status === 'ACCEPTED') || orders[0]
+    const [full] = await withItems([order])
+    const notes = {
+        READY_FOR_PICKUP: 'Code verified. Hand over the order and confirm.',
+        ACCEPTED: 'Code verified, but this order is not packed yet. Mark it ready first, then confirm the handover.',
+        COMPLETED: 'This order was already picked up.',
+    }
+    res.status(200).json({ success: true, msg: notes[order.status], order: full })
+}
+
 const acceptOrder = (req, res) => changeOrderStatus(req, res, 'ACCEPTED', false)
 const declineOrder = (req, res) => changeOrderStatus(req, res, 'DECLINED', true)
 const readyOrder = (req, res) => changeOrderStatus(req, res, 'READY_FOR_PICKUP', false)
@@ -378,5 +441,5 @@ const cancelByFarmer = (req, res) => changeOrderStatus(req, res, 'CANCELLED_BY_F
 
 export {
     createOrder, getMyOrders, getOrderById, cancelOrder, modifyOrder, reorder,
-    getFarmerOrders, acceptOrder, declineOrder, readyOrder, completeOrder, cancelByFarmer,
+    getFarmerOrders, acceptOrder, declineOrder, readyOrder, completeOrder, cancelByFarmer, verifyPickup,
 }

@@ -1,6 +1,6 @@
 import express from 'express'
 import { sendImage } from '../utilities/imageStore.js'
-import { getAllMarket, getMarketbyID } from '../controller/marketController.js'
+import { getAllMarket, getNearbyMarkets, getMarketbyID } from '../controller/marketController.js'
 import { getAllCategory } from '../controller/categoryController.js'
 import { getAllFarmer, getFarmerDirectory, getFarmerbyID } from '../controller/farmerController.js'
 import { getAllProduct, getCatalog, getProductbyID, getProductbyFarmer } from '../controller/productController.js'
@@ -12,6 +12,7 @@ import { getActiveAnnouncements, submitContact } from '../controller/publicContr
 const router = express.Router()
 
 router.get('/getAllMarket', getAllMarket)
+router.get('/getNearbyMarkets', getNearbyMarkets)
 router.get('/getMarketbyID/:id', getMarketbyID)
 
 router.get('/getAllCategory', getAllCategory)

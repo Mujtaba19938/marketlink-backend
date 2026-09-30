@@ -168,22 +168,68 @@ const getMyReviews = async (req, res) => {
     res.status(200).json({ success: true, average, count: visible.length, reviews })
 }
 
-// GET /farmer/insights -> totals, pending, revenue, best sellers, busiest pickup slots
+// GET /farmer/insights?days=30 -> totals, revenue, trend, best sellers, busiest slots, ratings, low stock.
+// days = 7 | 30 | 90 limits order stats to orders placed in that window; omitted / 0 = all time.
+const DAY_MS = 24 * 60 * 60 * 1000
+// days are counted in Pakistan time (UTC+5, no daylight saving) even though Vercel runs in UTC
+const PK_OFFSET_MS = 5 * 60 * 60 * 1000
+const dayKey = (d) => new Date(new Date(d).getTime() + PK_OFFSET_MS).toISOString().slice(0, 10)
+const dayStart = (key) => new Date(Date.parse(key + 'T00:00:00Z') - PK_OFFSET_MS)
+
 const getInsights = async (req, res) => {
     const farmerId = req.farmer._id
+    const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 0
+    const since = days ? new Date(Date.now() - days * DAY_MS) : null
+    const match = since ? { farmer: farmerId, createdAt: { $gte: since } } : { farmer: farmerId }
 
-    const [statusRows, revenueRow, orderIds] = await Promise.all([
-        orderModel.aggregate([{ $match: { farmer: farmerId } }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+    const [statusRows, orderIds, completed, customerRows, reviewRows, lowStock] = await Promise.all([
+        orderModel.aggregate([{ $match: match }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+        orderModel.find({ ...match, status: { $in: ['PLACED', 'ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED'] } }).distinct('_id'),
+        orderModel.find({ ...match, status: 'COMPLETED' }).select('totalAmount pickupDate completedAt').lean(),
         orderModel.aggregate([
-            { $match: { farmer: farmerId, status: 'COMPLETED' } },
-            { $group: { _id: null, revenue: { $sum: '$totalAmount' }, orders: { $sum: 1 } } },
+            { $match: { ...match, status: { $in: ['PLACED', 'ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED'] } } },
+            { $group: { _id: '$customer', orders: { $sum: 1 } } },
         ]),
-        orderModel.find({ farmer: farmerId, status: { $in: ['PLACED', 'ACCEPTED', 'READY_FOR_PICKUP', 'COMPLETED'] } }).distinct('_id'),
+        reviewModel.aggregate([
+            { $match: since ? { farmer: farmerId, status: 'VISIBLE', createdAt: { $gte: since } } : { farmer: farmerId, status: 'VISIBLE' } },
+            { $group: { _id: '$rating', count: { $sum: 1 } } },
+        ]),
+        // listed products that are sold out or nearly gone (5 units or less)
+        productModel.find({ farmer: farmerId, isActive: true, availability: { $ne: 'UNAVAILABLE' }, quantity: { $lte: 5 } })
+            .select('name quantity unit weeklyStock image imageType').sort({ quantity: 1 }).limit(8).lean(),
     ])
 
     const byStatus = {}
     statusRows.forEach((r) => { byStatus[r._id] = r.count })
     const totalOrders = statusRows.reduce((s, r) => s + r.count, 0)
+    const cancelledOrders = (byStatus.DECLINED || 0) + (byStatus.CANCELLED_BY_CUSTOMER || 0) + (byStatus.CANCELLED_BY_FARMER || 0) + (byStatus.EXPIRED || 0)
+    const revenue = completed.reduce((s, o) => s + o.totalAmount, 0)
+
+    // revenue trend from completed pickups (by handover time, older orders by pickup date): one bar per day for 7/30 days, per week (last 12) otherwise
+    const daily = days === 7 || days === 30
+    const buckets = []
+    const today = dayStart(dayKey(new Date()))
+    if (daily) {
+        for (let i = days - 1; i >= 0; i--) {
+            const start = new Date(today.getTime() - i * DAY_MS)
+            buckets.push({ start, end: new Date(start.getTime() + DAY_MS), label: dayKey(start), revenue: 0, orders: 0 })
+        }
+    } else {
+        // weeks start on Monday (Pakistan time)
+        const weeks = days === 90 ? 13 : 12
+        const weekday = new Date(today.getTime() + PK_OFFSET_MS).getUTCDay()
+        const monday = new Date(today.getTime() - ((weekday + 6) % 7) * DAY_MS)
+        for (let i = weeks - 1; i >= 0; i--) {
+            const start = new Date(monday.getTime() - i * 7 * DAY_MS)
+            buckets.push({ start, end: new Date(start.getTime() + 7 * DAY_MS), label: dayKey(start), revenue: 0, orders: 0 })
+        }
+    }
+    const trendSource = daily || days ? completed : await orderModel.find({ farmer: farmerId, status: 'COMPLETED', $or: [{ completedAt: { $gte: buckets[0].start } }, { completedAt: null, pickupDate: { $gte: buckets[0].start } }] }).select('totalAmount pickupDate completedAt').lean()
+    trendSource.forEach((o) => {
+        const t = new Date(o.completedAt || o.pickupDate).getTime()
+        const b = buckets.find((x) => t >= x.start.getTime() && t < x.end.getTime())
+        if (b) { b.revenue += o.totalAmount; b.orders += 1 }
+    })
 
     const bestSellers = await orderItemModel.aggregate([
         { $match: { order: { $in: orderIds } } },
@@ -191,7 +237,7 @@ const getInsights = async (req, res) => {
         { $sort: { quantity: -1 } },
         { $limit: 5 },
         { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
-        { $project: { name: 1, unit: 1, quantity: 1, revenue: 1, imageType: { $arrayElemAt: ['$product.imageType', 0] } } },
+        { $project: { name: 1, unit: 1, quantity: 1, revenue: 1, image: { $arrayElemAt: ['$product.image', 0] }, imageType: { $arrayElemAt: ['$product.imageType', 0] } } },
     ])
 
     const slotRows = await orderModel.aggregate([
@@ -202,15 +248,34 @@ const getInsights = async (req, res) => {
     ])
     const slotTotal = slotRows.reduce((s, r) => s + r.count, 0)
 
+    const distribution = [1, 2, 3, 4, 5].map((star) => (reviewRows.find((r) => r._id === star) || { count: 0 }).count)
+    const reviewCount = distribution.reduce((s, c) => s + c, 0)
+    const decided = (byStatus.COMPLETED || 0) + cancelledOrders
+
     res.status(200).json({
         success: true,
+        days,
         totalOrders,
         pendingOrders: byStatus.PLACED || 0,
         acceptedOrders: byStatus.ACCEPTED || 0,
         readyOrders: byStatus.READY_FOR_PICKUP || 0,
         completedOrders: byStatus.COMPLETED || 0,
-        cancelledOrders: (byStatus.DECLINED || 0) + (byStatus.CANCELLED_BY_CUSTOMER || 0) + (byStatus.CANCELLED_BY_FARMER || 0),
-        revenue: revenueRow[0] ? Number(revenueRow[0].revenue.toFixed(2)) : 0,
+        cancelledOrders,
+        cancellationRate: decided ? Math.round((cancelledOrders / decided) * 100) : 0,
+        revenue: Number(revenue.toFixed(2)),
+        averageOrderValue: completed.length ? Number((revenue / completed.length).toFixed(2)) : 0,
+        customers: customerRows.length,
+        repeatCustomers: customerRows.filter((c) => c.orders > 1).length,
+        trend: {
+            unit: daily ? 'day' : 'week',
+            points: buckets.map((b) => ({ label: b.label, revenue: Number(b.revenue.toFixed(2)), orders: b.orders })),
+        },
+        rating: {
+            average: reviewCount ? Number((distribution.reduce((s, c, i) => s + c * (i + 1), 0) / reviewCount).toFixed(1)) : 0,
+            count: reviewCount,
+            distribution,
+        },
+        lowStock,
         bestSellers,
         slots: slotRows.map((r) => ({
             label: (r._id.start || '?') + ' - ' + (r._id.end || '?'),

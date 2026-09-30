@@ -8,7 +8,7 @@ import { getFarmerProfile, updateFarmerProfile, getMyReviews, getInsights } from
 import { getMyProducts, addproduct, updateproduct, setavailability, deleteproduct, applyWeeklyStock } from '../controller/productController.js'
 import { assignMarket, updateAssignment, getMyMarkets } from '../controller/farmerMarketController.js'
 import { addSlot, updateSlot, deleteSlot, getMySlots } from '../controller/pickupSlotController.js'
-import { getFarmerOrders, acceptOrder, declineOrder, readyOrder, completeOrder, cancelByFarmer } from '../controller/orderController.js'
+import { getFarmerOrders, acceptOrder, declineOrder, readyOrder, completeOrder, cancelByFarmer, verifyPickup } from '../controller/orderController.js'
 import { respondReview } from '../controller/reviewController.js'
 
 const router = express.Router()
@@ -42,6 +42,7 @@ router.get('/orders/:status', getFarmerOrders)
 router.post('/orders/accept', acceptOrder)
 router.post('/orders/decline', declineOrder)
 router.post('/orders/ready', readyOrder)
+router.post('/orders/verifypickup', verifyPickup)
 router.post('/orders/complete', completeOrder)
 router.post('/orders/cancel', cancelByFarmer)
 
